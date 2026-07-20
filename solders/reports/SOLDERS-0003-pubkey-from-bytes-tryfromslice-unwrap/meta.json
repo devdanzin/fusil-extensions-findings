@@ -1,0 +1,25 @@
+{
+  "id": "SOLDERS-0003",
+  "extension": "solders",
+  "extension_version": "0.28.0",
+  "slug": "pubkey-from-bytes-tryfromslice-unwrap",
+  "title": "SOLDERS-0003 \u2014 Pubkey.from_bytes(len != 32) panics via .unwrap() on TryFromSliceError (crates/pubkey/src/lib.rs:266)",
+  "kind": "panic",
+  "caught_as": "pyo3_runtime.PanicException",
+  "signatures": [
+    "crates/pubkey/src/lib.rs:266"
+  ],
+  "crate": "pubkey (solders' own crate)",
+  "panic_reason": "called `Result::unwrap()` on an `Err` value: TryFromSliceError(())",
+  "one_line_repro": "from solders.pubkey import Pubkey; Pubkey.from_bytes(b\"x\")",
+  "repro": "repro.py",
+  "expected": "a Python ValueError (from_bytes should check len == 32 and raise, not unwrap)",
+  "vehicles": 52,
+  "reliability": "deterministic (single call, no concurrency)",
+  "status": "confirmed",
+  "target_python": "CPython 3.14.4+ debug build (GIL on)",
+  "found_in": "fusil-solders fleets 01-03 (--concurrency-stress / --new-uninit)",
+  "confirmed_build": "solders 0.28.0 (target: CPython 3.14.4+ debug build, GIL on)",
+  "prior_art": "unreported (to confirm vs the solders tracker)",
+  "notes": "`solders.pubkey.Pubkey.from_bytes(b)` converts the input bytes to a `[u8; 32]` with `TryInto::try_into(...).unwrap()` at crates/pubkey/src/lib.rs:266. Any input whose length is not exactly 32 makes the `try_into` return `Err(TryFromSliceError(()))`, and the `.unwrap()` panics -> `pyo3_runtime.PanicException` (exit 1 + Rust backtrace on stderr) instead of a clean `ValueError`. Confirmed for len 0/1/31/33; `from_bytes(bytes(32))` is fine. Fix = check the length and raise a `PyValueError` (or propagate the `TryFromSliceError` via `?`)."
+}

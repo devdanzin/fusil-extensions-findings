@@ -1,0 +1,4 @@
+# bug_id	signature   (panic-site key; cargo-registry paths normalised to <crate>-<ver>/... )
+SOLDERS-0001	solana-epoch-schedule-3.0.0/src/lib.rs:100
+SOLDERS-0002	crates/rpc-responses/src/lib.rs:2044
+SOLDERS-0003	crates/pubkey/src/lib.rs:266
