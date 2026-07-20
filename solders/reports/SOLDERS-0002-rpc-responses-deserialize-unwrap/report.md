@@ -1,32 +1,46 @@
-# SOLDERS-0002 — solders.rpc.responses .unwrap()s a serde deserialize error -> panic on non-map input (crates/rpc-responses/src/lib.rs:2044)
+# SOLDERS-0002 — solders.rpc.responses.batch_to_json() .unwrap()s a serde deserialize error -> panic on a non-response element (crates/rpc-responses/src/lib.rs:2044)
 
-**Found by** fusil (`--concurrency-stress` / `--new-uninit`) fuzzing the **solders** PyO3 extension; solders 0.28.0 (target: CPython 3.14.4+ debug build, GIL on). **435 crash dirs** across fleets 01–03.
+**Found by** fusil (`--new-uninit`) fuzzing the **solders** PyO3 extension; solders 0.28.0 (target:
+CPython 3.14.4+ debug build, GIL on). **435 crash dirs** across fleets 01–03.
 
 ## Reproducer
 
 ```python
-# SOLDERS-0002 has no minimal 1-liner yet -- it is reached by the fusil --new-uninit region
-# (T.__new__(T) on solders.rpc.responses types, then poking their methods). The class is a
-# serde_json deserialize `.unwrap()` at crates/rpc-responses/src/lib.rs:2044 that panics when a
-# JSON value that is not a map/object (e.g. a bare integer) reaches a map-expecting deserialize.
-# Vehicle (reproduces the crates/rpc-responses/src/lib.rs:2044 panic 2/2):
-#   /home/fusil/runs/fusil-solders_02/inst-*/python/solders_rpc_responses-panicked-*/source.py
-#
-# `parse_websocket_message` / `parse_notification` / `_batch_from_json` and every `*Resp.from_json`
-# tested with a bare-integer JSON return a *clean* error, so the offending path is a different,
-# not-yet-pinned deserialize site behind the uninitialized-object poke -- documented as a class.
-import solders.rpc.responses  # see notes; minimal direct trigger pending
+from solders.rpc.responses import batch_to_json
+
+batch_to_json([0])   # element 0 -> "invalid type: integer `0`, expected a map" -> panic
+# batch_to_json(b"a")  # equivalent: bytes iterate to ints; 0x61 == 97 -> "integer `97`, expected a map"
 ```
 
-**Panic:** `called `Result::unwrap()` on an `Err` value: Error("invalid type: integer `N`, expected a map", ...)`
-(site: `crates/rpc-responses/src/lib.rs:2044`, crate: rpc-responses (solders' own crate))
+`batch_to_json([])` and `batch_to_json(b"")` are fine (no elements); `batch_to_json("a")` raises a
+proper `TypeError`. The panic needs a **non-empty iterable whose elements are not RPC responses**.
 
-**Caught as:** `pyo3_runtime.PanicException` — PyO3's `catch_unwind` turns the Rust panic into a Python exception, so the process exits 1 (not a hard abort) but prints a multi-KB Rust panic backtrace to stderr and raises an un-idiomatic `PanicException`.
+**Panic:** `` called `Result::unwrap()` on an `Err` value: Error("invalid type: integer `N`, expected a map", line: 1, column: 2) ``
+(site: `crates/rpc-responses/src/lib.rs:2044`, crate: rpc-responses — solders' own)
 
-**Expected:** a Python exception (ValueError/TypeError) from the deserialize error, not a PanicException.
+**Caught as:** `pyo3_runtime.PanicException` — PyO3's `catch_unwind` turns the Rust panic into a
+Python exception, so the process exits 1 (not a hard abort) but prints a multi-KB Rust panic
+backtrace to stderr and raises an un-idiomatic `PanicException`.
 
-**Reliability:** vehicle reproduces 2/2 (source.py); minimal direct repro pending.
+**Expected:** a Python `TypeError`/`ValueError` naming the bad element, not a `PanicException`.
+
+**Reliability:** deterministic (single call).
 
 ## Root cause & fix
 
-A serde_json deserialize `.unwrap()` in solders' own rpc-responses crate (crates/rpc-responses/src/lib.rs:2044) panics with `invalid type: integer N, expected a map` when a JSON value that is not an object reaches a map-expecting deserialize. Reached in the fleet by the fusil `--new-uninit` region (`T.__new__(T)` on rpc.responses types, then method poking) -- vehicle reproduces the exact site 2/2. The direct minimal trigger is not yet pinned: the module-level parsers (`parse_websocket_message`, `parse_notification`, `_batch_from_json`) and all 139 `*Resp.from_json` classmethods return a *clean* error on a bare-integer JSON, so the panic is a different deserialize path behind an uninitialized/poked object. Class = a Python-reachable serde `.unwrap()` that should propagate as a `PyErr`. Fix = map the serde error to a PyO3 exception (`?`/`map_err`) instead of `.unwrap()`.
+`solders.rpc.responses.batch_to_json(seq)` batch-serializes a sequence of RPC response objects. It
+iterates `seq` and, for each element, round-trips it through serde (deserializing it as a response,
+i.e. a JSON **map**) before serializing — and `.unwrap()`s that deserialize `Result` at
+`crates/rpc-responses/src/lib.rs:2044`. When an element is not a response (a bare integer — e.g.
+`[0]`, or a byte from `b"a"` which iterates to `97`), the deserialize returns
+`Err(invalid type: integer N, expected a map)` and the `.unwrap()` panics.
+
+This was the not-yet-pinned finding in the original catalog entry; it was elusive because the
+module's *parsers* (`parse_websocket_message`, `parse_notification`, `batch_from_json`) and all 139
+`*Resp.from_json` classmethods return a *clean* error on a bare integer — only `batch_to_json`
+`.unwrap()`s. It surfaced 435× in the fleet via the `--new-uninit` discovery sweep, which calls
+module-level callables with hostile arg combos (`b"a"`, `[]`, `{}`, a stateful bomb whose `__str__`
+returns the varying integers `97`/`116`/… seen in the panic reasons).
+
+**Fix:** propagate the serde error as a `PyErr` (`?` / `map_err(|e| PyValueError::new_err(...))`)
+instead of `.unwrap()`, and/or validate that each `seq` element is a response object up front.

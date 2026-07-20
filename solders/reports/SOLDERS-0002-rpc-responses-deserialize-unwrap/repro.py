@@ -1,11 +1,13 @@
-# SOLDERS-0002 has no minimal 1-liner yet -- it is reached by the fusil --new-uninit region
-# (T.__new__(T) on solders.rpc.responses types, then poking their methods). The class is a
-# serde_json deserialize `.unwrap()` at crates/rpc-responses/src/lib.rs:2044 that panics when a
-# JSON value that is not a map/object (e.g. a bare integer) reaches a map-expecting deserialize.
-# Vehicle (reproduces the crates/rpc-responses/src/lib.rs:2044 panic 2/2):
-#   /home/fusil/runs/fusil-solders_02/inst-*/python/solders_rpc_responses-panicked-*/source.py
+# SOLDERS-0002: solders.rpc.responses.batch_to_json(seq) treats each element of `seq` as an RPC
+# response to serialize, but internally deserializes it as a JSON map and .unwrap()s the serde
+# error. A non-empty iterable whose elements are not response maps (e.g. an int, or a byte) makes
+# the deserialize fail with "invalid type: integer N, expected a map" -> panic at
+# crates/rpc-responses/src/lib.rs:2044 -> pyo3_runtime.PanicException, instead of a clean
+# TypeError/ValueError.
 #
-# `parse_websocket_message` / `parse_notification` / `_batch_from_json` and every `*Resp.from_json`
-# tested with a bare-integer JSON return a *clean* error, so the offending path is a different,
-# not-yet-pinned deserialize site behind the uninitialized-object poke -- documented as a class.
-import solders.rpc.responses  # see notes; minimal direct trigger pending
+# Deterministic. batch_to_json([]) and batch_to_json(b"") are fine (no elements); batch_to_json("a")
+# raises a proper TypeError. The panic needs a non-empty iterable with a non-response element.
+from solders.rpc.responses import batch_to_json
+
+batch_to_json([0])  # element 0 -> "invalid type: integer `0`, expected a map"
+# batch_to_json(b"a")  # equivalent: bytes iterate to ints; 0x61 == 97 -> "integer `97`, expected a map"

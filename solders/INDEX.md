@@ -21,7 +21,7 @@ fast** onto a handful of panic sites.
 | id | site | panic reason | veh | minimal repro |
 |----|------|--------------|-----|---------------|
 | **SOLDERS-0001** | `solana-epoch-schedule-3.0.0/src/lib.rs:100` | `assertion failed: slots_per_epoch >= MINIMUM_SLOTS_PER_EPOCH` | 1124 | `EpochSchedule(0)` |
-| **SOLDERS-0002** | `crates/rpc-responses/src/lib.rs:2044` | `unwrap()` on serde `invalid type: integer, expected a map` | 435 | vehicle-confirmed; direct trigger pending |
+| **SOLDERS-0002** | `crates/rpc-responses/src/lib.rs:2044` | `unwrap()` on serde `invalid type: integer, expected a map` | 435 | `batch_to_json([0])` |
 | **SOLDERS-0003** | `crates/pubkey/src/lib.rs:266` | `unwrap()` on `TryFromSliceError(())` | 52 | `Pubkey.from_bytes(b"x")` |
 
 All three are **PyO3 panics caught as `pyo3_runtime.PanicException`** (exit 1 + a Rust backtrace on
@@ -43,6 +43,7 @@ forwarding). SOLDERS-0002/0003 are in solders' own crates (`rpc-responses`, `pub
 
 ## Status
 
-Converged: no crash outside the three panic sites + the excluded CPython assertion. Next steps —
-pin SOLDERS-0002's direct minimal trigger, and (maintainer's call) file the three panics with the
-solders project. Prior art vs the solders tracker: to check.
+Converged: no crash outside the three panic sites + the excluded CPython assertion. All three now
+have deterministic 1-line repros (SOLDERS-0002's direct trigger, `batch_to_json([0])`, was pinned by
+instrumenting the `--new-uninit` discovery sweep). Next step — (maintainer's call) file the three
+panics with the solders project. Prior art vs the solders tracker: to check.
