@@ -1,0 +1,2 @@
+# bug_id	signature   (panic-site key; cargo-registry paths normalised to <crate>-<ver>/... )
+TOKENIZERS-0001	tokenizers/src/decoders/bpe.rs:28

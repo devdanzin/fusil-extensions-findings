@@ -27,6 +27,7 @@ counter (`SOLDERS-0001`). IDs never collide across extensions and never get reus
 | extension | kind | findings | notes |
 |-----------|------|----------|-------|
 | [**solders**](solders/) | Rust / PyO3 (Solana SDK) | **3** (SOLDERS-0001..0003) | converged fast; panic-on-bad-input class |
+| [**tokenizers**](tokenizers/) | Rust / PyO3 (Hugging Face) | **1** (TOKENIZERS-0001) | BPE decoder empty-input `usize` underflow; rest of fleet = a CPython FT race, not tokenizers |
 
 ## The dominant bug class (PyO3 extensions)
 

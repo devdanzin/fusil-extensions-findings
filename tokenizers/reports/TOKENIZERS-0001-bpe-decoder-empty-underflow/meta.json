@@ -1,0 +1,25 @@
+{
+  "id": "TOKENIZERS-0001",
+  "extension": "tokenizers",
+  "extension_version": "0.23.2.dev0",
+  "slug": "bpe-decoder-empty-underflow",
+  "title": "TOKENIZERS-0001 — BPEDecoder.decode([]) panics via usize underflow on empty input (tokenizers/src/decoders/bpe.rs:28)",
+  "kind": "panic",
+  "caught_as": "pyo3_runtime.PanicException",
+  "signatures": [
+    "tokenizers/src/decoders/bpe.rs:28"
+  ],
+  "crate": "tokenizers (the core Rust crate)",
+  "panic_reason": "attempt to subtract with overflow",
+  "one_line_repro": "from tokenizers.decoders import BPEDecoder; BPEDecoder().decode([])",
+  "repro": "repro.py",
+  "expected": "decode([]) should return [] (decoding an empty token list is empty); it must not panic",
+  "vehicles": 41,
+  "reliability": "deterministic (single call, no concurrency); debug/overflow-checks build only — release wraps to usize::MAX but never reads n for empty input, so release returns [] and does not crash",
+  "status": "confirmed",
+  "target_python": "CPython 3.14.6+ free-threaded debug build, ASan (GIL off)",
+  "found_in": "fusil-tokenizers_01 (--concurrency-stress)",
+  "confirmed_build": "tokenizers 0.23.2.dev0 (src HEAD b62132e); target CPython 3.14.6+ free-threaded + ASan + debug (GIL off)",
+  "prior_art": "specific site (BPEDecoder / decoders/bpe.rs empty-input underflow) UNREPORTED; the PyO3 panic-on-bad-input class IS known and actively fixed in tokenizers — closest: PR #2154 (Strip decoder decode_chain panic on short tokens, MERGED) and PR #1859 (truncation usize underflow, open). See notes/prior-art.md",
+  "notes": "BPEDecoder::decode_chain computes `let n = tokens.len() - 1;` at decoders/bpe.rs:28 with no empty guard. For empty input, 0usize - 1 underflows: with overflow checks (debug) it panics eagerly at the subtraction, before the iterator runs; in release it wraps to usize::MAX but n is never read (the map iterates zero times) so the result is [] by coincidence. A plain Python `BPEDecoder().decode([])` raises pyo3_runtime.PanicException on this debug build. Fix = `tokens.len().saturating_sub(1)` or an explicit empty-case return. Same class/method (Decoder::decode_chain) as the maintainer-fixed #2154 (Strip decoder), same usize-underflow mechanism as #1859 (truncation)."
+}
