@@ -72,3 +72,6 @@ signature (`"signatures": []`) and are resolved by gdb instead.
   `74280297+devdanzin@users.noreply.github.com`.
 - Outward-facing steps (filing upstream issues with the extension's maintainers) are done by the
   maintainer, not automated.
+- **Prior-art search:** before minting/filing, check the extension's tracker with the reliable
+  recipe in [`notes/searching-trackers.md`](notes/searching-trackers.md) (use `gh api search/issues`;
+  `gh search --state all` is a footgun, and quoting forces phrase-matching).

@@ -1,8 +1,11 @@
 # Prior art vs the solders tracker (kevinheavey/solders, checked 2026-07-20)
 
-Fetched all 65 issues (11 open + 54 closed) and 113 PRs and grepped titles/bodies for each finding's
-function/module + the panic class. (`gh search issues` returned empty — an indexing quirk — so this
-is a direct listing, not a search.)
+Searched via the GitHub search API (`gh api -X GET search/issues`) for each finding's
+function/module + the panic class, and cross-checked against a full `gh issue/pr list` + grep.
+(Re-confirmed with working search: `EpochSchedule`/`slots_per_epoch`/`batch_to_json`/
+`TryFromSliceError` all return `total_count: 0`.) The search recipe — and the `--state all` footgun
+that made the *first* attempt come back empty — is documented in the top-level
+[`notes/searching-trackers.md`](../notes/searching-trackers.md).
 
 ## The class is KNOWN and the maintainer actively fixes it
 
