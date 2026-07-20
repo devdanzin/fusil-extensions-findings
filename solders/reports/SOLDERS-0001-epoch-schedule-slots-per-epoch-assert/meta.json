@@ -20,6 +20,6 @@
   "target_python": "CPython 3.14.4+ debug build (GIL on)",
   "found_in": "fusil-solders fleets 01-03 (--concurrency-stress / --new-uninit)",
   "confirmed_build": "solders 0.28.0 (target: CPython 3.14.4+ debug build, GIL on)",
-  "prior_art": "unreported (to confirm vs the solders tracker)",
+  "prior_art": "specific site UNREPORTED; the PyO3 panic-on-bad-input class IS known (solders #122/#108/#91) and fixed once (PR #93, Keypair.from_base58_string). See notes/prior-art.md",
   "notes": "solders' `EpochSchedule(slots_per_epoch)` constructor (and `EpochSchedule.custom(...)`) forwards the argument straight into the `solana-epoch-schedule` crate's `EpochSchedule::new`, which does `assert!(slots_per_epoch >= MINIMUM_SLOTS_PER_EPOCH)` (=32) at solana-epoch-schedule-3.0.0/src/lib.rs:100. Any value below 32 (including 0/1/31) fires the assert -> Rust panic -> PyO3 catches it as `pyo3_runtime.PanicException` (process exits 1 with a multi-KB Rust panic backtrace on stderr) instead of a clean `ValueError`. `EpochSchedule(32)` and above are fine. The dominant crash across all three fleets (1124 dirs). NOTE: the assert lives in the *dependency* crate; the fix belongs in solders -- validate `slots_per_epoch` (>= MINIMUM_SLOTS_PER_EPOCH) in the PyO3 constructor and raise a `PyValueError`, rather than passing unvalidated user input into a crate that `assert!`s on it. Also reached via `EpochSchedule.custom(0, 0, True)`."
 }

@@ -45,5 +45,10 @@ forwarding). SOLDERS-0002/0003 are in solders' own crates (`rpc-responses`, `pub
 
 Converged: no crash outside the three panic sites + the excluded CPython assertion. All three now
 have deterministic 1-line repros (SOLDERS-0002's direct trigger, `batch_to_json([0])`, was pinned by
-instrumenting the `--new-uninit` discovery sweep). Next step — (maintainer's call) file the three
-panics with the solders project. Prior art vs the solders tracker: to check.
+instrumenting the `--new-uninit` discovery sweep).
+
+**Prior art** (`notes/prior-art.md`): the PyO3 panic-on-bad-input class is **known** to the solders
+maintainer (issues #122/#108/#91, and merged fix PR #93 "Avoid panic in `Keypair.from_base58_string`"),
+but our **three specific sites appear unreported** — no issue names EpochSchedule/slots_per_epoch,
+`batch_to_json`, or `Pubkey.from_bytes`. They are new instances of a class the maintainer already fixes.
+Next step — (maintainer's call) file the three panics, framed as more `#93`-style panics.
