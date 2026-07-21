@@ -1,0 +1,6 @@
+# bug_id	signature   (panic-site key; cargo-registry paths normalised to <crate>-<ver>/... )
+PYDANTIC-0001	num-bigint-0.4.6/src/biguint/division.rs:112
+PYDANTIC-0001	src/input/return_enums.rs:701
+PYDANTIC-0002	src/validators/custom_error.rs:77
+PYDANTIC-0002	src/validators/uuid.rs:67
+PYDANTIC-0002	src/validators/with_default.rs:125

@@ -1,0 +1,23 @@
+{
+  "id": "PYDANTIC-0003",
+  "extension": "pydantic-core",
+  "extension_version": "2.41.5",
+  "slug": "deep-schema-stack-overflow",
+  "title": "PYDANTIC-0003 -- a deeply nested core-schema overflows the native stack at SchemaValidator build (hard crash, uncatchable)",
+  "kind": "segv",
+  "caught_as": "SIGSEGV / SIGABRT (stack overflow)",
+  "signatures": [],
+  "crate": "pydantic-core (own src)",
+  "panic_reason": "stack overflow (not a Rust panic) in src/validators/mod.rs build_validator_inner -- recursion with no depth guard at construction",
+  "one_line_repro": "from pydantic_core import SchemaValidator, core_schema as cs; s=cs.int_schema(); [s:=cs.list_schema(s) for _ in range(5000)]; SchemaValidator(s)",
+  "repro": "repro.py",
+  "expected": "a too-deeply-nested schema should raise (e.g. a recursion/SchemaError) at build; it must not overflow the native stack and crash the process",
+  "vehicles": 1,
+  "reliability": "n=1000 builds fine; n>=~3000 crashes (threshold depends on stack size / build). HARD crash: panic=unwind cannot catch a stack overflow. Confirmed via AddressSanitizer 'stack-overflow' at build_validator_inner.",
+  "status": "confirmed",
+  "target_python": "CPython 3.14t free-threaded + ASan (stack-overflow caught by ASan); a plain build SIGSEGVs",
+  "found_in": "design-phase probing while building fusil_pydantic_plugin; reproduced by the plugin's seed_deep_nesting factory",
+  "confirmed_build": "pydantic_core 2.41.5 (src /home/danzin/projects/laruche/repositories/pydantic-core); venv /home/danzin/projects/labeille/venvs/asan-pydantic-core",
+  "prior_art": "UNREPORTED (tracker checked 2026-07-21). pydantic-core DOES guard recursion at validate/serialize time (RecursionState / _recursion_limit -> clean recursion_loop error) but NOT at schema CONSTRUCTION -- the RecursionState guard is instantiated only at validate/serialize (src/validators/mod.rs:354/381/433), never during build. So build_validator_inner recurses per level with no counter.",
+  "notes": "build_validator_inner (src/validators/mod.rs, ~:551 dispatch) recurses on each nested child schema (list/dict/union/nullable/chain/default/... item schemas) with no depth guard, so a schema nested a few thousand levels deep overflows the native stack during SchemaValidator(...)/SchemaSerializer(...). Distinct from cyclic definition-ref schemas, which ARE guarded (RecursionError at validate). Fix = add a construction-time depth guard (mirror the validate-time RecursionState, or a build depth counter) that returns SchemaError past a limit. DoS class: the only hard (uncatchable) crash of the pydantic-core set."
+}

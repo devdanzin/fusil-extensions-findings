@@ -1,0 +1,27 @@
+{
+  "id": "PYDANTIC-0002",
+  "extension": "pydantic-core",
+  "extension_version": "2.41.5",
+  "slug": "buildtime-unvalidated-schema-panics",
+  "title": "PYDANTIC-0002 -- SchemaValidator(...) panics at build on invalid schema-field values (custom_error/on_error/uuid version) instead of raising SchemaError",
+  "kind": "panic",
+  "caught_as": "pyo3_runtime.PanicException",
+  "signatures": [
+    "src/validators/custom_error.rs:77",
+    "src/validators/with_default.rs:125",
+    "src/validators/uuid.rs:67"
+  ],
+  "crate": "pydantic-core (own src)",
+  "panic_reason": "called Option::unwrap() on a None value (custom_error.rs:77) / internal error: entered unreachable code (with_default.rs:125, uuid.rs:67)",
+  "one_line_repro": "from pydantic_core import SchemaValidator, core_schema as cs; SchemaValidator(cs.uuid_schema(version=2))",
+  "repro": "repro.py",
+  "expected": "an invalid schema-field value should raise SchemaError at build (as most invalid fields already do); it must not panic",
+  "vehicles": 1,
+  "reliability": "deterministic, build-independent (unwrap/unreachable, not overflow checks). Three sites, same root cause.",
+  "status": "confirmed",
+  "target_python": "CPython 3.14t free-threaded + ASan; bug is interpreter/build independent",
+  "found_in": "surface-mapped during fusil_pydantic_plugin design; reproduced by the plugin's seed factories (seed_custom_error_no_type / seed_default_bad_on_error / seed_uuid_bad_version)",
+  "confirmed_build": "pydantic_core 2.41.5 (src /home/danzin/projects/laruche/repositories/pydantic-core); venv /home/danzin/projects/labeille/venvs/asan-pydantic-core",
+  "prior_art": "UNREPORTED (tracker checked 2026-07-21). Maintainer stance per #1516: Python-reachable Rust panics are bugs to fix gracefully. (Agent-suggested 4th site -- function-* with a bad inner function.type -- is already GUARDED on 2.41.5: clean SchemaError, not a panic.)",
+  "notes": "ROOT CAUSE: SchemaValidator.__new__ does NOT validate `schema` against pydantic-core's self-schema (it calls build_validator directly, src/validators/mod.rs:138), so a hand-built dict reaches the Rust builders unfiltered. Builders that assume 'the pydantic layer already validated this field' then unwrap/unreachable on an invalid value: (1) custom-error schema without custom_error_type -> CustomError::build returns None -> .unwrap() (custom_error.rs:77); (2) default schema with on_error not in {raise,omit,default} -> unreachable!() (with_default.rs:125); (3) uuid schema with version not in {1,3,4,5,6,7,8} (e.g. 0,2,9) -> Version::from unreachable!() (uuid.rs:67; agent cited :88 on a nearby tree). SchemaValidator/core_schema is public pydantic_core API. Fix = validate these fields at build and return SchemaError (as negative min_length etc. already do), or make the builders return an error instead of unreachable!/unwrap. Panic-on-bad-input class."
+}
