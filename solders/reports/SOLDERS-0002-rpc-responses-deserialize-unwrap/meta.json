@@ -14,6 +14,7 @@
   "one_line_repro": "from solders.rpc.responses import batch_to_json; batch_to_json([0])",
   "repro": "repro.py",
   "expected": "a Python TypeError/ValueError naming the bad element, not a PanicException",
+  "guarded_twin": "the 139 *Resp.from_json classmethods in the same solders build: they round-trip through serde and ?-propagate the deserialise Result (returning a clean Python error on a non-response), where batch_to_json alone .unwrap()s it. The fix = ?-propagate / map_err(PyValueError::new_err(...)) as the from_json family already does.",
   "vehicles": 435,
   "reliability": "deterministic (single call)",
   "status": "confirmed",

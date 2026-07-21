@@ -15,6 +15,7 @@
   "one_line_repro": "from pydantic_core import SchemaValidator, core_schema as cs; SchemaValidator(cs.int_schema(multiple_of=0)).validate_python(10)",
   "repro": "repro.py",
   "expected": "multiple_of=0 should be rejected at build (SchemaError) or handled at validate (ValidationError); it must not panic",
+  "guarded_twin": "pydantic-core's own decimal and float multiple_of paths do NOT panic on a zero divisor: decimal_schema(multiple_of=Decimal(0)) raises decimal.DivisionByZero and float_schema(multiple_of=0.0) yields NaN (f64 % 0.0). The int validator should likewise reject multiple_of<=0 at build (SchemaError) or guard the modulo, not divide by zero.",
   "vehicles": 1,
   "reliability": "deterministic; build-independent (ordinary %/÷ by zero, not a debug-only overflow check). Reachable via validate_python AND validate_json. float(multiple_of=0.0) is fine (f64 % 0.0 = NaN); decimal raises decimal.DivisionByZero.",
   "status": "confirmed",

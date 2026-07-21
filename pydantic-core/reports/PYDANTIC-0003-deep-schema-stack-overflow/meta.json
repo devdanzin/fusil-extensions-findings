@@ -12,6 +12,7 @@
   "one_line_repro": "from pydantic_core import SchemaValidator, core_schema as cs; s=cs.int_schema(); [s:=cs.list_schema(s) for _ in range(5000)]; SchemaValidator(s)",
   "repro": "repro.py",
   "expected": "a too-deeply-nested schema should raise (e.g. a recursion/SchemaError) at build; it must not overflow the native stack and crash the process",
+  "guarded_twin": "pydantic-core's own validate/serialize path IS recursion-guarded: RecursionState / _recursion_limit returns a clean recursion_loop error (src/validators/mod.rs:354/381/433). The build path (build_validator_inner) has no such guard. The fix = mirror the validate-time RecursionState (or a build depth counter) that returns SchemaError past a limit.",
   "vehicles": 1,
   "reliability": "n=1000 builds fine; n>=~3000 crashes (threshold depends on stack size / build). HARD crash: panic=unwind cannot catch a stack overflow. Confirmed via AddressSanitizer 'stack-overflow' at build_validator_inner.",
   "status": "confirmed",

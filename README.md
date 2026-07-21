@@ -46,6 +46,11 @@ A minority are harder: real segfaults (unsafe code), aborts (double-panic, stack
 crashes in the *interpreter* triggered incidentally during extension fuzzing (tracked as upstream
 CPython bugs, not extension findings — see each extension's `notes/`).
 
+The recurring **shapes** are extension-independent (panic-on-unwrap, divide-by-zero-on-arg,
+index/underflow, unguarded recursion → stack overflow). The cross-extension index —
+which shape each finding instances, its fix pattern, and how it pairs with the static-review toolkit —
+is [`notes/pyo3-shapes.md`](notes/pyo3-shapes.md).
+
 ## `meta.json` schema (per finding)
 
 ```jsonc
@@ -58,9 +63,11 @@ CPython bugs, not extension findings — see each extension's `notes/`).
   "crate": "...", "panic_reason": "...",
   "one_line_repro": "...", "repro": "repro.py",
   "expected": "the Python exception the call should raise instead",
+  "guarded_twin": "the correctly-handled sibling in the same crate (= the fix template); optional",
   "vehicles": 1124, "reliability": "...", "status": "confirmed",
   "target_python": "...", "found_in": "...", "confirmed_build": "...",
-  "prior_art": "...", "notes": "..."
+  "prior_art": "...", "notes": "...",
+  "review_ref": "RX-SOLDERS-0002"          // optional: the matching rust-ext-review-findings id, if any
 }
 ```
 
@@ -68,6 +75,17 @@ The **signature** is a panic-site key `<crate>-<version>/src/<path>.rs:<line>` (
 absolute paths — `/…/index.crates.io-…/<crate>-<ver>/…` — are normalised to the `<crate>-<ver>/…`
 tail; an extension's own `crates/…` paths are kept as-is). Segfault/abort findings carry no
 signature (`"signatures": []`) and are resolved by gdb instead.
+
+Two optional fields align this catalog with the sibling static-review catalog
+([rust-ext-review-findings](https://github.com/devdanzin/rust-ext-review-findings)):
+
+- **`guarded_twin`** — the correctly-handled sibling in the same crate that shows the fix (e.g.
+  SOLDERS-0002's 139 `*Resp.from_json` that `?`-propagate where `batch_to_json` `.unwrap()`s). Present
+  only where a *genuine* sibling exists; where the fix is "add a check" with no sibling, it stays in
+  `expected`/`notes`. The cross-extension view lives in [`notes/pyo3-shapes.md`](notes/pyo3-shapes.md).
+- **`review_ref`** — the `RX-<EXT>-NNNN` id in the static catalog this finding corresponds to, once
+  that catalog confirms the same site (the mirror of its `fuzzer_ref` → our `<EXT>-NNNN`). Omitted
+  until such a link exists.
 
 ## Conventions
 

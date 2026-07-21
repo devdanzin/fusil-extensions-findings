@@ -16,6 +16,7 @@
   "one_line_repro": "from pydantic_core import SchemaValidator, core_schema as cs; SchemaValidator(cs.uuid_schema(version=2))",
   "repro": "repro.py",
   "expected": "an invalid schema-field value should raise SchemaError at build (as most invalid fields already do); it must not panic",
+  "guarded_twin": "the schema fields that ARE validated during build and return a clean SchemaError -- e.g. a negative str min_length, a bad regex, an unknown 'type' -- all raise SchemaError. custom_error_type/on_error/version take the unwrap/unreachable path instead. The fix = validate these fields at build like the others (return SchemaError), or make the builders return an error rather than unreachable!/unwrap.",
   "vehicles": 1,
   "reliability": "deterministic, build-independent (unwrap/unreachable, not overflow checks). Three sites, same root cause.",
   "status": "confirmed",
