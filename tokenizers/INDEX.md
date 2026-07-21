@@ -43,6 +43,20 @@ crashing (the underflowed index is never read for empty input). Same class and s
   a couple of `genobject.c:261` generator asserts ([cpython#120321](https://github.com/python/cpython/issues/120321)).
   Excluded here; full evidence in `notes/excluded-cpython-tsan-0006.md`.
 
+## Later fleets (`_07` / `_08`, TSan build + `--tsan-mutate-state`)
+
+Follow-up fleets on the **TSan** interpreter (`~/projects/3.14_tsan_debug_ft/python`) with the new
+`--tsan-mutate-state` / `--tsan-shared-objects-only` levers found **no new tokenizers bug**. The pile
+is dominated by a **CPython** shared-generator crash — [cpython#120321](https://github.com/python/cpython/issues/120321),
+concurrent `next()`/`send()` on a shared generator under FT (op (h)) — de-noised by fusil PR #237
+(op (h) now skips generators). Two dirs in `_08` panicked at `pyo3-0.29.0/src/types/dict.rs:578`
+*"dictionary changed size during iteration"*: this is **known, by-design PyO3 free-threaded
+behaviour** (PyO3 #4439/#4571), hit when a mutate-state worker mutates the `vocab` dict that
+`tokenizers.models.BPE(vocab=…)` is extracting into a `HashMap` — a caller-side data race, **not**
+filed. Full evidence + deterministic repro: `notes/excluded-pyo3-dict-iter-race.md`. It is the first
+crash to reach the **PyO3 binding layer** (argument extraction), confirming mutate-state exercises an
+extension's `FromPyObject` path under concurrency.
+
 ## Status
 
 Converged: the only tokenizers crash is TOKENIZERS-0001. Deterministic 1-line repro. **Prior art**
