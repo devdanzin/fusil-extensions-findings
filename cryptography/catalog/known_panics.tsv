@@ -1,0 +1,5 @@
+# bug_id	signature   (panic-site key; cargo-registry paths normalised to <crate>-<ver>/... )
+CRYPTOGRAPHY-0001	src/rust/src/padding.rs:103
+CRYPTOGRAPHY-0001	src/rust/src/padding.rs:147
+CRYPTOGRAPHY-0001	src/rust/src/padding.rs:182
+CRYPTOGRAPHY-0001	src/rust/src/padding.rs:241

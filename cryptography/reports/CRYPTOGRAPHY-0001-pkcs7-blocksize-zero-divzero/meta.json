@@ -1,0 +1,28 @@
+{
+  "id": "CRYPTOGRAPHY-0001",
+  "extension": "cryptography",
+  "extension_version": "50.0.0-dev1 (git 49.0.0-227-g2f67c6d)",
+  "slug": "pkcs7-blocksize-zero-divzero",
+  "title": "CRYPTOGRAPHY-0001 — public padding.PKCS7(0)/ANSIX923(0) panics with divide/modulo by zero instead of raising ValueError (src/rust/src/padding.rs)",
+  "kind": "panic",
+  "caught_as": "pyo3_runtime.PanicException",
+  "signatures": [
+    "src/rust/src/padding.rs:103",
+    "src/rust/src/padding.rs:147",
+    "src/rust/src/padding.rs:182",
+    "src/rust/src/padding.rs:241"
+  ],
+  "crate": "cryptography-rust (the _rust PyO3 module in the cryptography repo)",
+  "panic_reason": "attempt to divide by zero (unpadder .update, :182/:241) / attempt to calculate the remainder with a divisor of zero (padder .finalize, :103/:147)",
+  "one_line_repro": "from cryptography.hazmat.primitives import padding; padding.PKCS7(0).unpadder().update(b'A'*8)",
+  "repro": "repro.py",
+  "expected": "PKCS7(0)/ANSIX923(0) should raise ValueError at construction (block_size of 0 is invalid), like every other bad block_size does; it must not build a context that later panics",
+  "vehicles": 1,
+  "reliability": "deterministic, single call, single-threaded (NOT free-threading related); reproduces on any build (ordinary / and % by zero, not a debug-only overflow check)",
+  "status": "confirmed",
+  "target_python": "CPython 3.14t free-threaded + ThreadSanitizer build (GIL off); bug is interpreter/build independent",
+  "found_in": "fusil-cryptography_02 (--tsan) -- the cryptography_hazmat_bindings__rust-panicked dir (padding.rs:182)",
+  "confirmed_build": "cryptography 50.0.0-dev1 (src /home/danzin/projects/laruche/repositories/cryptography @ 2f67c6d), OpenSSL 3.5.5; target /home/danzin/projects/labeille/venvs/tsan-cryptography/bin/python",
+  "prior_art": "UNREPORTED. gh api search/issues on pyca/cryptography (2026-07-21) found no issue for block_size=0, a padding divide-by-zero, or a PanicException from PKCS7/ANSIX923.",
+  "notes": "_byte_padding_check (src/cryptography/hazmat/primitives/padding.py:32-37) admits block_size=0: `if not (0 <= block_size <= 2040)` (lower bound should be `0 <`) and `0 % 8 == 0`. The Rust contexts store block_size/8 = 0 for block_size<8 and then divide/modulo by it at four sites (PKCS7/ANSIX923 x unpadder-update/padder-finalize). All four reach Python as pyo3_runtime.PanicException. Fix = `0 < block_size` in _byte_padding_check (closes all four at once); optionally also reject block_size==0 in the Rust new() constructors since hazmat.bindings._rust is directly importable. Panic-on-bad-input class caused by a validator off-by-one rather than a missing check. NOT a security/UB issue (caught panic, no memory unsafety), NOT free-threading related."
+}
