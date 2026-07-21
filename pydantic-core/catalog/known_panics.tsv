@@ -4,3 +4,4 @@ PYDANTIC-0001	src/input/return_enums.rs:701
 PYDANTIC-0002	src/validators/custom_error.rs:77
 PYDANTIC-0002	src/validators/uuid.rs:67
 PYDANTIC-0002	src/validators/with_default.rs:125
+PYDANTIC-0004	src/input/datetime.rs:756

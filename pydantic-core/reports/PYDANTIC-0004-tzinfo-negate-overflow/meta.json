@@ -1,0 +1,26 @@
+{
+  "id": "PYDANTIC-0004",
+  "extension": "pydantic-core",
+  "extension_version": "2.41.5",
+  "slug": "tzinfo-negate-overflow",
+  "title": "PYDANTIC-0004 -- TzInfo(seconds) panics ('negate with overflow') on a large negative float via i32::MIN.abs(), instead of raising ValueError",
+  "kind": "panic",
+  "caught_as": "pyo3_runtime.PanicException",
+  "signatures": [
+    "src/input/datetime.rs:756"
+  ],
+  "crate": "pydantic-core (own src); the overflow itself is i32::abs() in Rust core/num/mod.rs:426",
+  "panic_reason": "attempt to negate with overflow (i32::MIN.abs())",
+  "one_line_repro": "import pydantic_core; pydantic_core.TzInfo(-1e18)",
+  "repro": "repro.py",
+  "expected": "an out-of-range or non-finite seconds offset should raise ValueError (as -90000.0 already does); it must not panic",
+  "guarded_twin": "the SAME range check returns the intended ValueError for every offset except i32::MIN: TzInfo(-90000.0) -> ValueError, and a large POSITIVE float saturates to i32::MAX (abs() is fine) -> ValueError too. Only the i32::MIN saturation makes seconds.abs() overflow. Fix = seconds.unsigned_abs() >= 86400 (u32, no overflow), or range-check without abs (e.g. !(-86400 < seconds && seconds < 86400)), or reject the saturating/non-finite cast up front.",
+  "vehicles": 255,
+  "reliability": "deterministic; build-independent (ordinary i32::abs() overflow check, not a debug-only assert). py_new narrows to f32 first, so ANY float that narrows/casts to i32::MIN triggers it: -1e18, float('-inf'), -2147483648.0, even -2147483647.0 (rounds to i32::MIN in f32). float('nan') casts to 0 (OK); large POSITIVE floats saturate to i32::MAX and raise ValueError (no panic).",
+  "status": "confirmed",
+  "target_python": "CPython 3.14t free-threaded + ASan; bug is interpreter/build independent",
+  "found_in": "fusil-pydantic_core_03 (exploration mode: fusil_pydantic_plugin default, seeds off + known-crash suppression on). 255 crash dirs, ALL this one panic -- the first NOVEL finding after the known PYDANTIC-0001/0002/0003 were suppressed. The plugin's _pyd_fuzz_module_surface() calls TzInfo(-1e18).",
+  "confirmed_build": "pydantic_core 2.41.5 (src /home/danzin/projects/laruche/repositories/pydantic-core); venv /home/danzin/projects/labeille/venvs/asan-pydantic-core",
+  "prior_art": "UNREPORTED (pydantic/pydantic-core tracker checked 2026-07-21 -- no issue for a TzInfo panic, negate/overflow, or this site). Maintainer stance per #1516: Python-reachable Rust panics are bugs to fix gracefully.",
+  "notes": "TzInfo::py_new (src/input/datetime.rs:674) does `Self::try_from(seconds.trunc() as i32)` on `seconds: f32`. `float as i32` saturates in Rust, so a large negative float -> i32::MIN. TryFrom<i32>::try_from (datetime.rs:756) then does `if seconds.abs() >= 86400 { Err(ValueError...) }` -- and `i32::MIN.abs()` overflows (the panic is in Rust core/num/mod.rs:426, reached from datetime.rs:756). So the value IS out of range and SHOULD take the Err branch, but abs() panics first. Public API (pydantic_core.TzInfo). Panic-on-bad-input class."
+}

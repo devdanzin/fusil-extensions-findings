@@ -40,3 +40,6 @@ points keep these in scope:
 - **PYDANTIC-0003** (deep-nesting stack overflow at build): unreported. pydantic-core already guards
   the analogous *validate-time* recursion (`recursion_loop`), so the construction-side gap is a
   natural, consistent fix.
+- **PYDANTIC-0004** (`TzInfo` negate-overflow): unreported (no issue for a `TzInfo` panic, a
+  negate/overflow, or `datetime.rs:756`). Simple fix (`unsigned_abs`), and the same check already
+  raises the intended `ValueError` for every offset except `i32::MIN`.
